@@ -1,0 +1,31 @@
+variables:
+  DEBIAN_FRONTEND: noninteractive
+  ENABLE_TANGO_DB: "false"
+  ENABLE_SONARCLOUD: "false"
+  ENABLE_JAVA_8: "true"
+  ENABLE_JAVA_11: "true"
+  DEPLOY_JAVA_IMAGE: "maven:3.6.3-openjdk-11-slim"
+  DEPLOY_JAVA_VERSION: "11"
+
+# See: https://docs.gitlab.com/ce/ci/yaml/README.html#workflowrules-templates
+workflow:
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+basic:
+  image: debian:12
+  tags:
+    - docker, linux, amd64
+  before_script:
+    - apt-get update
+    - apt-get install -y cmake pkg-config g++
+  script:
+    - cmake -B build -S .
+    - pkg-config --validate build/tangoidl.pc
+    - cmake -DCMAKE_PREFIX_PATH=build -DNAME=tangoidl -DCOMPILER_ID=GNU -DLANGUAGE=CXX -DMODE=EXIST --find-package
+    - ./check-tag-version.sh
+include:
+  - project: 'tango-controls/gitlab-ci-templates'
+    file: 'Java.gitlab-ci.yml'
